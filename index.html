@@ -1,189 +1,708 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Winpay - Login & Register</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medicine Tracker PWA</title>
+  
+  <!-- Manifest for PWA -->
+  <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Medicine%20Tracker%22,%22short_name%22:%22MedApp%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23f3f4f6%22,%22theme_color%22:%22%232563eb%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563eb'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white'>💊</text></svg>%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg+xml%22}]}"/>
+  <meta name="theme-color" content="#2563eb">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="MedApp">
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: #f3f4f6; padding-bottom: 120px; }
+    
+    /* Header */
+    header { 
+      background: #2563eb; 
+      color: white; 
+      padding: 16px; 
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky; 
+      top: 0; 
+      z-index: 10; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+    }
+    header h2 { font-size: 18px; font-weight: 700; }
+    
+    .header-actions { display: flex; gap: 8px; }
+
+    .header-btn {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .header-btn:hover { background: rgba(255, 255, 255, 0.3); }
+
+    /* Main Layout */
+    main { max-width: 500px; margin: 0 auto; padding: 16px; }
+    
+    /* Card Styles */
+    .med-card { 
+      border-radius: 12px; 
+      margin-bottom: 14px; 
+      display: flex; 
+      flex-direction: column;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06); 
+      transition: all 0.3s ease; 
+      border-left: 6px solid; 
+      overflow: hidden;
+      background: white;
+    }
+    .card-red { background-color: #ffffff; border-color: #ef4444; }
+    .card-green { background-color: #f0fdf4; border-color: #22c55e; }
+    
+    /* Card Body Section */
+    .card-body {
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      justify-content: space-between;
+    }
+
+    /* Left Section: Serial Number + Name/Remark */
+    .card-info {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex: 1;
+    }
+
+    /* Row Left: Serial Number */
+    .serial-box { 
+      font-size: 20px; 
+      font-weight: 800; 
+      color: #374151; 
+      min-width: 32px; 
+      text-align: center;
+    }
+
+    /* Row Center: Medicine Name & Remark */
+    .details-box { flex: 1; }
+    .med-title { font-size: 17px; font-weight: 700; color: #1f2937; margin-bottom: 2px; }
+    .med-remark { font-size: 13.5px; color: #6b7280; line-height: 1.3; }
+
+    /* Timer Badge on the Right Side */
+    .timer-badge {
+      font-size: 12px;
+      font-weight: 700;
+      color: #15803d;
+      background: #dcfce7;
+      border: 1px solid #86efac;
+      padding: 5px 10px;
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      margin-left: 10px;
+    }
+
+    /* Bottom Professional Action Bar */
+    .card-actions-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(0,0,0,0.06);
+      background: rgba(0,0,0,0.015);
+      padding: 8px 12px;
+    }
+
+    .action-group { display: flex; gap: 8px; }
+
+    .btn-action-text {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      color: #4b5563;
+      padding: 6px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+    .btn-action-text.edit:hover { background: #e0e7ff; color: #2563eb; border-color: #c7d2fe; }
+    .btn-action-text.delete:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+
+    /* Bottom Toggle Status Button */
+    .btn-status-toggle {
+      border: none;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-status-toggle.status-red { background: #fee2e2; color: #dc2626; }
+    .btn-status-toggle.status-red:hover { background: #fecaca; }
+    .btn-status-toggle.status-green { background: #dcfce7; color: #16a34a; }
+    .btn-status-toggle.status-green:hover { background: #bbf7d0; }
+
+    /* Floating Action Button (+) */
+    .fab { 
+      position: fixed; 
+      bottom: 24px; 
+      right: 24px; 
+      background: #2563eb; 
+      color: white; 
+      border: none; 
+      width: 56px; 
+      height: 56px; 
+      border-radius: 50%; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3); 
+      cursor: pointer; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      z-index: 20; 
+      transition: transform 0.2s; 
+    }
+    .fab:hover { transform: scale(1.05); background: #1d4ed8; }
+    
+    /* Bottom Install App Banner */
+    .install-banner {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.12);
+      border-top: 1px solid #e5e7eb;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 40;
+      animation: slideUp 0.3s ease-out forwards;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .install-info { display: flex; align-items: center; gap: 12px; }
+    .install-icon { width: 40px; height: 40px; background: #2563eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: white; }
+    .install-text h4 { font-size: 15px; color: #1f2937; font-weight: 700; }
+    .install-text p { font-size: 12px; color: #6b7280; }
+    .install-btns { display: flex; gap: 8px; align-items: center; }
+    .btn-install { background: #2563eb; color: white; border: none; padding: 8px 14px; font-size: 13px; font-weight: 600; border-radius: 6px; cursor: pointer; }
+    .btn-install:hover { background: #1d4ed8; }
+    .btn-close-banner { background: transparent; border: none; font-size: 20px; color: #9ca3af; cursor: pointer; padding: 4px; line-height: 1; }
+
+    /* Manual Install Instructions Popup Modal */
+    .guide-popup {
+      background: white;
+      width: 100%;
+      max-width: 380px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      padding: 20px;
+      text-align: left;
+    }
+    .guide-popup h3 { font-size: 17px; color: #1f2937; margin-bottom: 12px; }
+    .guide-popup ol { margin-left: 20px; color: #4b5563; font-size: 14px; line-height: 1.6; }
+    .guide-popup button { width: 100%; background: #2563eb; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: 600; margin-top: 16px; cursor: pointer; }
+
+    /* Pop-up Modal Backdrop */
+    .backdrop { 
+      position: fixed; 
+      inset: 0; 
+      background: rgba(0,0,0,0.5); 
+      z-index: 50; 
+      display: none; 
+      align-items: center; 
+      justify-content: center; 
+      padding: 16px; 
+      opacity: 0; 
+      transition: opacity 0.2s ease-in-out; 
+    }
+    .backdrop.active { display: flex; opacity: 1; }
+    
+    /* Center Pop-up Window */
+    .popup { 
+      background: white; 
+      width: 100%; 
+      max-width: 400px; 
+      border-radius: 12px; 
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
+      padding: 20px; 
+      transform: scale(0.9); 
+      transition: transform 0.2s ease-in-out; 
+    }
+    .backdrop.active .popup { transform: scale(1); }
+    
+    .popup-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 16px; }
+    .popup-header h3 { font-size: 18px; color: #1f2937; }
+    .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; line-height: 1; }
+    
+    /* Form Inputs */
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+    .form-group input, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; }
+    .form-group input:focus, .form-group textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
+    
+    .submit-btn { width: 100%; background: #2563eb; color: white; border: none; padding: 12px; font-size: 16px; font-weight: 600; border-radius: 6px; cursor: pointer; margin-top: 6px; }
+    .submit-btn:hover { background: #1d4ed8; }
+    .empty-state { text-align: center; color: #6b7280; padding: 32px 0; font-size: 15px; }
+
+    /* Custom Confirm Alert Modal Styling */
+    .alert-popup {
+      background: white;
+      width: 100%;
+      max-width: 350px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      padding: 20px;
+      text-align: center;
+      transform: scale(0.9);
+      transition: transform 0.2s ease-in-out;
+    }
+    .backdrop.active .alert-popup { transform: scale(1); }
+    .alert-title { font-size: 18px; font-weight: 700; color: #1f2937; margin-bottom: 10px; }
+    .alert-message { font-size: 14px; color: #4b5563; margin-bottom: 20px; line-height: 1.4; }
+    .alert-buttons { display: flex; gap: 10px; justify-content: center; }
+    .alert-btn { flex: 1; padding: 10px; border-radius: 6px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .alert-btn-cancel { background: #e5e7eb; color: #374151; }
+    .alert-btn-cancel:hover { background: #d1d5db; }
+    .alert-btn-confirm { background: #2563eb; color: white; }
+    .alert-btn-confirm:hover { background: #1d4ed8; }
+  </style>
 </head>
-<body class="bg-slate-900 text-white flex items-center justify-center min-h-screen p-4">
-    <div class="bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700">
-        <h2 id="form-title" class="text-2xl font-bold mb-6 text-center text-indigo-400">Login to Winpay</h2>
-        
-        <!-- Form -->
-        <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
-            <div id="name-field" class="hidden">
-                <label class="block text-sm font-medium mb-1">Full Name</label>
-                <input type="text" id="name" class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-indigo-500">
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-1">Mobile Number</label>
-                <input type="text" id="mobile" required class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-indigo-500">
-            </div>
-            <div id="email-field" class="hidden">
-                <label class="block text-sm font-medium mb-1">Email Address</label>
-                <input type="email" id="email" class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-indigo-500">
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-1">Password</label>
-                <input type="password" id="password" required class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-indigo-500">
-            </div>
-            <div id="refer-field" class="hidden">
-                <label class="block text-sm font-medium mb-1">Referral Code</label>
-                <input type="text" id="refer_code" class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-indigo-500">
-            </div>
-            
-            <button type="submit" id="submit-btn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-semibold transition duration-200">Login</button>
-        </form>
+<body>
 
-        <!-- Switch & Forgot Links -->
-        <div class="mt-6 text-center text-sm space-y-2">
-            <p><button type="button" onclick="toggleMode()" id="switch-mode" class="text-indigo-400 hover:underline bg-transparent border-none cursor-pointer">Don't have an account? Register</button></p>
-            <p><button type="button" onclick="forgotPassword()" class="text-slate-400 hover:underline bg-transparent border-none cursor-pointer">Forgot Password?</button></p>
-        </div>
+  <header>
+    <h2>Medicine Dashboard</h2>
+    <div class="header-actions">
+      <button id="reset-status-btn" class="header-btn">Reset Status</button>
     </div>
+  </header>
 
-    <!-- Custom Alert Popup -->
-    <div id="custom-alert" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl max-w-sm w-full text-center space-y-4">
-            <div class="w-12 h-12 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">✓</div>
-            <h3 class="text-xl font-bold text-white">Welcome!</h3>
-            <div id="alert-content" class="text-slate-300 text-sm space-y-1"></div>
-            <button onclick="closeAlert()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-semibold">Continue to Dashboard</button>
-        </div>
+  <main>
+    <div id="medicine-list"></div>
+  </main>
+
+  <!-- Bottom Right + Button -->
+  <button id="open-btn" class="fab" title="Add Medicine">
+    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+  </button>
+
+  <!-- Bottom App Install Banner -->
+  <div id="install-banner" class="install-banner">
+    <div class="install-info">
+      <div class="install-icon">💊</div>
+      <div class="install-text">
+        <h4>Install Medicine Tracker</h4>
+        <p>Quick access & works offline</p>
+      </div>
     </div>
+    <div class="install-btns">
+      <button id="install-app-btn" class="btn-install">Install</button>
+      <button id="close-install-banner" class="btn-close-banner">&times;</button>
+    </div>
+  </div>
 
-    <script>
-        const SUPABASE_URL = 'https://nzjpeofntgmmxuwpvgrb.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_EMtwDM6VuGCoWElwvE2K7w_GvjIJGg-';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <!-- Manual Install Guide Modal (Fallback if browser blocks direct prompt) -->
+  <div id="guide-backdrop" class="backdrop">
+    <div class="guide-popup">
+      <h3>Install App Manually</h3>
+      <ol>
+        <li>Click browser menu (<strong>⋮</strong> or <strong>Share icon</strong>)</li>
+        <li>Select <strong>"Add to Home Screen"</strong> or <strong>"Install App"</strong></li>
+        <li>Confirm to install.</li>
+      </ol>
+      <button id="close-guide-btn">Got It</button>
+    </div>
+  </div>
 
-        let isRegisterMode = false;
+  <!-- Center Pop-up Window Modal (Input Form) -->
+  <div id="popup-backdrop" class="backdrop">
+    <div class="popup">
+      <div class="popup-header">
+        <h3 id="popup-title">Add New Medicine</h3>
+        <button id="close-btn" class="close-btn" title="Close">&times;</button>
+      </div>
 
-        window.addEventListener('DOMContentLoaded', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const ref = urlParams.get('ref');
-            if (ref) {
-                isRegisterMode = false;
-                toggleMode();
-                const referInput = document.getElementById('refer_code');
-                if (referInput) referInput.value = ref;
-            }
+      <form id="medicine-form">
+        <input type="hidden" id="edit-id">
+        <div class="form-group">
+          <label>Serial Number</label>
+          <input type="number" id="serial-no" placeholder="E.g., 1" required>
+        </div>
+
+        <div class="form-group">
+          <label>Medicine Name</label>
+          <input type="text" id="med-name" placeholder="E.g., Paracetamol" required>
+        </div>
+
+        <div class="form-group">
+          <label>Remark</label>
+          <textarea id="med-remark" rows="3" placeholder="E.g., After meals"></textarea>
+        </div>
+
+        <button type="submit" id="submit-btn" class="submit-btn">Save Medicine</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Custom Alert Pop-up Modal -->
+  <div id="alert-backdrop" class="backdrop" style="z-index: 60;">
+    <div class="alert-popup">
+      <div class="alert-title">Confirmation</div>
+      <div id="alert-message" class="alert-message">Are you sure?</div>
+      <div class="alert-buttons">
+        <button id="alert-cancel-btn" class="alert-btn alert-btn-cancel">Cancel</button>
+        <button id="alert-confirm-btn" class="alert-btn alert-btn-confirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let medicines = JSON.parse(localStorage.getItem('medicines')) || [];
+    let pendingAction = null;
+    let timerInterval = null;
+    let deferredPrompt = null;
+
+    const TIMER_DURATION_MS = 20 * 60 * 1000; // 20 Minutes in Milliseconds
+
+    const openBtn = document.getElementById('open-btn');
+    const closeBtn = document.getElementById('close-btn');
+    const backdrop = document.getElementById('popup-backdrop');
+    const form = document.getElementById('medicine-form');
+    const medList = document.getElementById('medicine-list');
+    const resetStatusBtn = document.getElementById('reset-status-btn');
+    const popupTitle = document.getElementById('popup-title');
+    const submitBtn = document.getElementById('submit-btn');
+    const editIdInput = document.getElementById('edit-id');
+
+    // Custom Alert Elements
+    const alertBackdrop = document.getElementById('alert-backdrop');
+    const alertMessage = document.getElementById('alert-message');
+    const alertCancelBtn = document.getElementById('alert-cancel-btn');
+    const alertConfirmBtn = document.getElementById('alert-confirm-btn');
+
+    // Install Banner & Guide Elements
+    const installBanner = document.getElementById('install-banner');
+    const installAppBtn = document.getElementById('install-app-btn');
+    const closeInstallBanner = document.getElementById('close-install-banner');
+    const guideBackdrop = document.getElementById('guide-backdrop');
+    const closeGuideBtn = document.getElementById('close-guide-btn');
+
+    /* ---------------- PWA Install Auto-Detection ---------------- */
+    function checkAndShowInstallBanner() {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      const isDismissed = sessionStorage.getItem('installBannerDismissed');
+
+      // Show banner if not installed and not dismissed in current session
+      if (!isStandalone && !isDismissed) {
+        installBanner.style.display = 'flex';
+      } else {
+        installBanner.style.display = 'none';
+      }
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      checkAndShowInstallBanner();
+    });
+
+    installAppBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          installBanner.style.display = 'none';
+        }
+        deferredPrompt = null;
+      } else {
+        // Fallback: If browser doesn't support automatic prompt, show step-by-step guide
+        guideBackdrop.classList.add('active');
+      }
+    });
+
+    closeGuideBtn.addEventListener('click', () => {
+      guideBackdrop.classList.remove('active');
+    });
+
+    closeInstallBanner.addEventListener('click', () => {
+      installBanner.style.display = 'none';
+      sessionStorage.setItem('installBannerDismissed', 'true');
+    });
+
+    window.addEventListener('appinstalled', () => {
+      installBanner.style.display = 'none';
+      deferredPrompt = null;
+    });
+
+    /* ---------------- Medicine Tracker Core Logic ---------------- */
+    function togglePopup(open, isEdit = false) {
+      if (open) {
+        if (!isEdit) {
+          form.reset();
+          editIdInput.value = '';
+          popupTitle.textContent = 'Add New Medicine';
+          submitBtn.textContent = 'Save Medicine';
+        }
+        backdrop.classList.add('active');
+      } else {
+        backdrop.classList.remove('active');
+      }
+    }
+
+    openBtn.addEventListener('click', () => togglePopup(true));
+    closeBtn.addEventListener('click', () => togglePopup(false));
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const editId = editIdInput.value;
+      const serialNo = document.getElementById('serial-no').value;
+      const name = document.getElementById('med-name').value;
+      const remark = document.getElementById('med-remark').value || '';
+
+      if (editId) {
+        medicines = medicines.map(med => {
+          if (med.id == editId) {
+            return { ...med, serialNo, name, remark };
+          }
+          return med;
         });
+      } else {
+        const newMed = {
+          id: Date.now(),
+          serialNo,
+          name,
+          remark,
+          isTaken: false,
+          timerEndTimestamp: null
+        };
+        medicines.push(newMed);
+      }
 
-        function toggleMode() {
-            isRegisterMode = !isRegisterMode;
-            
-            const title = document.getElementById('form-title');
-            const btn = document.getElementById('submit-btn');
-            const switchText = document.getElementById('switch-mode');
-            
-            if (title) title.innerText = isRegisterMode ? "Register to Winpay" : "Login to Winpay";
-            if (btn) btn.innerText = isRegisterMode ? "Register" : "Login";
-            if (switchText) switchText.innerText = isRegisterMode ? "Already have an account? Login" : "Don't have an account? Register";
-            
-            const nameField = document.getElementById('name-field');
-            const emailField = document.getElementById('email-field');
-            const referField = document.getElementById('refer-field');
-            
-            if (nameField) nameField.classList.toggle('hidden', !isRegisterMode);
-            if (emailField) emailField.classList.toggle('hidden', !isRegisterMode);
-            if (referField) referField.classList.toggle('hidden', !isRegisterMode);
+      saveAndRender();
+      form.reset();
+      togglePopup(false);
+    });
+
+    function editMedicine(id) {
+      const targetMed = medicines.find(med => med.id === id);
+      if (!targetMed) return;
+
+      editIdInput.value = targetMed.id;
+      document.getElementById('serial-no').value = targetMed.serialNo;
+      document.getElementById('med-name').value = targetMed.name;
+      document.getElementById('med-remark').value = targetMed.remark;
+
+      popupTitle.textContent = 'Edit Medicine';
+      submitBtn.textContent = 'Update Medicine';
+      togglePopup(true, true);
+    }
+
+    function deleteMedicine(id) {
+      const targetMed = medicines.find(med => med.id === id);
+      if (!targetMed) return;
+
+      showCustomAlert(`Are you sure you want to delete "${targetMed.name}"?`, () => {
+        medicines = medicines.filter(med => med.id !== id);
+        saveAndRender();
+      });
+    }
+
+    function showCustomAlert(message, onConfirm) {
+      alertMessage.textContent = message;
+      pendingAction = onConfirm;
+      alertBackdrop.classList.add('active');
+    }
+
+    function closeCustomAlert() {
+      alertBackdrop.classList.remove('active');
+      pendingAction = null;
+    }
+
+    alertCancelBtn.addEventListener('click', closeCustomAlert);
+    
+    alertConfirmBtn.addEventListener('click', () => {
+      if (pendingAction) pendingAction();
+      closeCustomAlert();
+    });
+
+    // Toggle status & start/clear 20 min timer
+    function toggleStatus(id) {
+      const targetMed = medicines.find(med => med.id === id);
+      if (!targetMed) return;
+
+      const actionText = targetMed.isTaken 
+        ? `Are you sure you want to mark "${targetMed.name}" as NOT taken?` 
+        : `Are you sure you want to mark "${targetMed.name}" as TAKEN? (20-min Timer will start)`;
+
+      showCustomAlert(actionText, () => {
+        medicines = medicines.map(med => {
+          if (med.id === id) {
+            const nextStatus = !med.isTaken;
+            return {
+              ...med,
+              isTaken: nextStatus,
+              timerEndTimestamp: nextStatus ? Date.now() + TIMER_DURATION_MS : null
+            };
+          }
+          return med;
+        });
+        saveAndRender();
+      });
+    }
+
+    // Reset All Status to Red ×
+    resetStatusBtn.addEventListener('click', () => {
+      if (medicines.length === 0) return;
+
+      showCustomAlert('Are you sure you want to reset all statuses to Red (×)?', () => {
+        medicines = medicines.map(med => ({
+          ...med,
+          isTaken: false,
+          timerEndTimestamp: null
+        }));
+        saveAndRender();
+      });
+    });
+
+    // Check & auto-reset expired timers
+    function checkAndUpdateTimers() {
+      const now = Date.now();
+      let stateChanged = false;
+
+      medicines = medicines.map(med => {
+        if (med.isTaken && med.timerEndTimestamp) {
+          if (now >= med.timerEndTimestamp) {
+            stateChanged = true;
+            return { ...med, isTaken: false, timerEndTimestamp: null };
+          }
         }
+        return med;
+      });
 
-        function generateUniqueId() {
-            return Math.floor(10000 + Math.random() * 90000).toString();
+      if (stateChanged) {
+        saveAndRender();
+      } else {
+        updateTimerDisplays();
+      }
+    }
+
+    function updateTimerDisplays() {
+      const now = Date.now();
+      medicines.forEach(med => {
+        if (med.isTaken && med.timerEndTimestamp) {
+          const remainingMs = Math.max(0, med.timerEndTimestamp - now);
+          const totalSeconds = Math.floor(remainingMs / 1000);
+          const mins = Math.floor(totalSeconds / 60);
+          const secs = totalSeconds % 60;
+          
+          const formattedMins = String(mins).padStart(2, '0');
+          const formattedSecs = String(secs).padStart(2, '0');
+
+          const badgeEl = document.getElementById(`timer-badge-${med.id}`);
+          if (badgeEl) {
+            badgeEl.textContent = `⏱️ ${formattedMins}:${formattedSecs}`;
+          }
         }
+      });
+    }
 
-        async function handleAuth(event) {
-            event.preventDefault();
-            const mobile = document.getElementById('mobile').value;
-            const password = document.getElementById('password').value;
+    function startGlobalTimerLoop() {
+      if (!timerInterval) {
+        timerInterval = setInterval(checkAndUpdateTimers, 1000);
+      }
+    }
 
-            if (isRegisterMode) {
-                const name = document.getElementById('name').value;
-                const email = document.getElementById('email').value;
-                const referCodeInput = document.getElementById('refer_code').value;
-                const userId = generateUniqueId();
-                
-                let welcomeBonus = 50;
-                try {
-                    const { data: settings } = await supabase.from('settings').select('value').eq('key', 'config').single();
-                    if (settings && settings.value) {
-                        welcomeBonus = settings.value.welcome_bonus || 50;
-                    }
-                } catch (err) {}
+    function saveAndRender() {
+      medicines.sort((a, b) => Number(a.serialNo) - Number(b.serialNo));
+      localStorage.setItem('medicines', JSON.stringify(medicines));
+      
+      medList.innerHTML = '';
 
-                const { error } = await supabase.from('users').insert([{
-                    user_id: userId,
-                    name: name,
-                    mobile: mobile,
-                    email: email,
-                    password: password,
-                    refer_code: userId,
-                    referred_by: referCodeInput || null,
-                    wallet: welcomeBonus
-                }]);
+      if (medicines.length === 0) {
+        medList.innerHTML = `<p class="empty-state">No medicines added yet.<br>Click the + button to add one.</p>`;
+        return;
+      }
 
-                if (error) {
-                    alert('Registration Error: ' + error.message);
-                    return;
-                }
+      medicines.forEach((med) => {
+        const card = document.createElement('div');
+        card.className = `med-card ${med.isTaken ? 'card-green' : 'card-red'}`;
 
-                const alertContent = document.getElementById('alert-content');
-                const customAlert = document.getElementById('custom-alert');
-                
-                if (alertContent) {
-                    alertContent.innerHTML = `
-                        <p><b>User Name:</b> ${name}</p>
-                        <p><b>User ID:</b> ${userId}</p>
-                        <p><b>Password:</b> ${password}</p>
-                        <p class="text-green-400 mt-2">Welcome Bonus ₹${welcomeBonus} added to wallet!</p>
-                    `;
-                }
-                if (customAlert) customAlert.classList.remove('hidden');
-                localStorage.setItem('currentUser', JSON.stringify({ user_id: userId, name, mobile, email }));
-            } else {
-                const { data, error } = await supabase.from('users').select('*').eq('mobile', mobile).eq('password', password).single();
-                if (error || !data) {
-                    alert('Invalid Mobile Number or Password');
-                    return;
-                }
-                localStorage.setItem('currentUser', JSON.stringify(data));
-                window.location.href = 'dashboard.html';
-            }
-        }
+        card.innerHTML = `
+          <!-- Card Body -->
+          <div class="card-body">
+            <div class="card-info">
+              <div class="serial-box">${med.serialNo}</div>
+              <div class="details-box">
+                <div class="med-title">${med.name}</div>
+                ${med.remark ? `<div class="med-remark">${med.remark}</div>` : ''}
+              </div>
+            </div>
+            ${med.isTaken ? `<div id="timer-badge-${med.id}" class="timer-badge">⏱️ 20:00</div>` : ''}
+          </div>
 
-        async function forgotPassword() {
-            const inputVal = prompt("Enter your registered Mobile Number or Email:");
-            if (!inputVal) return;
+          <!-- Bottom Professional Action Bar -->
+          <div class="card-actions-bar">
+            <div class="action-group">
+              <button onclick="editMedicine(${med.id})" class="btn-action-text edit" title="Edit Medicine">
+                <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                Edit
+              </button>
+              <button onclick="deleteMedicine(${med.id})" class="btn-action-text delete" title="Delete Medicine">
+                <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Delete
+              </button>
+            </div>
 
-            const { data, error } = await supabase.from('users')
-                .select('*')
-                .or(`mobile.eq.${inputVal},email.eq.${inputVal}`)
-                .single();
+            <button onclick="toggleStatus(${med.id})" class="btn-status-toggle ${med.isTaken ? 'status-green' : 'status-red'}" title="Toggle Status">
+              ${med.isTaken ? '✓ Taken' : '× Not Taken'}
+            </button>
+          </div>
+        `;
 
-            if (error || !data) {
-                alert('No account found with this details.');
-                return;
-            }
+        medList.appendChild(card);
+      });
 
-            if (!data.email) {
-                alert('No email address found for this account.');
-                return;
-            }
+      updateTimerDisplays();
+      startGlobalTimerLoop();
+    }
 
-            const subject = encodeURIComponent("Your Winpay Password Recovery");
-            const body = encodeURIComponent(`Hello ${data.name},\n\nYour Account Details:\nUser ID: ${data.user_id}\nMobile: ${data.mobile}\nPassword: ${data.password}`);
-            
-            window.location.href = `mailto:${data.email}?subject=${subject}&body=${body}`;
-            alert('Email app opened. Send the email to receive your password.');
-        }
+    // Initialize Check for Install Banner
+    checkAndShowInstallBanner();
 
-        function closeAlert() {
-            window.location.href = 'dashboard.html';
-        }
-    </script>
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        const swCode = `
+          self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
+          self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+          self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));
+        `;
+        const blob = new Blob([swCode], { type: 'application/javascript' });
+        navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+      });
+    }
+
+    saveAndRender();
+  </script>
 </body>
 </html>
