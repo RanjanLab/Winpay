@@ -40,10 +40,13 @@
       border: 1px solid rgba(255, 255, 255, 0.4);
       padding: 6px 12px;
       border-radius: 6px;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
     .header-btn:hover { background: rgba(255, 255, 255, 0.3); }
 
@@ -263,6 +266,11 @@
     
     .submit-btn { width: 100%; background: #2563eb; color: white; border: none; padding: 12px; font-size: 16px; font-weight: 600; border-radius: 6px; cursor: pointer; margin-top: 6px; }
     .submit-btn:hover { background: #1d4ed8; }
+    
+    /* Delete/Reset specific button */
+    .reset-btn-danger { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+    .reset-btn-danger:hover { background: #fecaca; }
+
     .empty-state { text-align: center; color: #6b7280; padding: 32px 0; font-size: 15px; }
 
     /* Custom Confirm Alert Modal Styling */
@@ -293,7 +301,11 @@
   <header>
     <h2>Medicine Dashboard</h2>
     <div class="header-actions">
-      <button id="reset-status-btn" class="header-btn">Reset Status</button>
+      <!-- Settings Button replacing Reset button -->
+      <button id="settings-btn" class="header-btn">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        Settings
+      </button>
     </div>
   </header>
 
@@ -305,6 +317,29 @@
   <button id="open-btn" class="fab" title="Add Medicine">
     <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
   </button>
+
+  <!-- Settings Pop-up Modal -->
+  <div id="settings-backdrop" class="backdrop">
+    <div class="popup">
+      <div class="popup-header">
+        <h3>Settings</h3>
+        <button id="close-settings-btn" class="close-btn" title="Close">&times;</button>
+      </div>
+
+      <div class="form-group">
+        <label>Timer Duration (Minutes)</label>
+        <input type="number" id="timer-duration-input" min="1" max="1440" placeholder="E.g., 20">
+        <button id="save-timer-btn" class="submit-btn" style="margin-top: 10px;">Save Timer</button>
+      </div>
+
+      <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+
+      <div class="form-group">
+        <label>Reset Dashboard</label>
+        <button id="reset-status-btn" class="submit-btn reset-btn-danger">Reset All Status to Red (×)</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Bottom App Install Banner -->
   <div id="install-banner" class="install-banner" style="display: none;">
@@ -378,11 +413,10 @@
 
   <script>
     /* ---------------- Dynamic PWA Manifest Generation ---------------- */
-    // Generates a proper manifest with 192x192 & 512x512 icons (Strictly required for PWA install)
     const manifestData = {
       name: "Medicine Tracker",
       short_name: "MedApp",
-      start_url: window.location.href, // Dynamic URL mapping ensures smooth install
+      start_url: window.location.href,
       display: "standalone",
       background_color: "#f3f4f6",
       theme_color: "#2563eb",
@@ -406,21 +440,27 @@
 
     /* ---------------- App Variables & DOM Elements ---------------- */
     let medicines = JSON.parse(localStorage.getItem('medicines')) || [];
+    let savedTimerMins = parseInt(localStorage.getItem('timerDuration')) || 20;
     let pendingAction = null;
     let timerInterval = null;
     let deferredPrompt = null;
-
-    const TIMER_DURATION_MS = 20 * 60 * 1000;
 
     const openBtn = document.getElementById('open-btn');
     const closeBtn = document.getElementById('close-btn');
     const backdrop = document.getElementById('popup-backdrop');
     const form = document.getElementById('medicine-form');
     const medList = document.getElementById('medicine-list');
-    const resetStatusBtn = document.getElementById('reset-status-btn');
     const popupTitle = document.getElementById('popup-title');
     const submitBtn = document.getElementById('submit-btn');
     const editIdInput = document.getElementById('edit-id');
+
+    // Settings Elements
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsBackdrop = document.getElementById('settings-backdrop');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const resetStatusBtn = document.getElementById('reset-status-btn');
+    const timerDurationInput = document.getElementById('timer-duration-input');
+    const saveTimerBtn = document.getElementById('save-timer-btn');
 
     // Custom Alert Elements
     const alertBackdrop = document.getElementById('alert-backdrop');
@@ -462,7 +502,6 @@
         }
         deferredPrompt = null;
       } else {
-        // Fallback guide if browser prompt is restricted
         guideBackdrop.classList.add('active');
       }
     });
@@ -479,6 +518,26 @@
     window.addEventListener('appinstalled', () => {
       installBanner.style.display = 'none';
       deferredPrompt = null;
+    });
+
+    /* ---------------- Settings & Timer Logic ---------------- */
+    settingsBtn.addEventListener('click', () => {
+      timerDurationInput.value = savedTimerMins;
+      settingsBackdrop.classList.add('active');
+    });
+
+    closeSettingsBtn.addEventListener('click', () => {
+      settingsBackdrop.classList.remove('active');
+    });
+
+    saveTimerBtn.addEventListener('click', () => {
+      const newDuration = parseInt(timerDurationInput.value);
+      if (newDuration > 0) {
+        savedTimerMins = newDuration;
+        localStorage.setItem('timerDuration', savedTimerMins);
+        settingsBackdrop.classList.remove('active');
+        showCustomAlert(`Timer default duration updated to ${savedTimerMins} minutes.`, null);
+      }
     });
 
     /* ---------------- Medicine Tracker Core Logic ---------------- */
@@ -559,6 +618,15 @@
       alertMessage.textContent = message;
       pendingAction = onConfirm;
       alertBackdrop.classList.add('active');
+      
+      // If there's no action passed, just act as a standard info alert (hide cancel button)
+      if (!onConfirm) {
+        alertCancelBtn.style.display = 'none';
+        alertConfirmBtn.textContent = 'OK';
+      } else {
+        alertCancelBtn.style.display = 'block';
+        alertConfirmBtn.textContent = 'Confirm';
+      }
     }
 
     function closeCustomAlert() {
@@ -573,14 +641,14 @@
       closeCustomAlert();
     });
 
-    // Toggle status & start/clear 20 min timer
+    // Toggle status & start/clear timer dynamically
     function toggleStatus(id) {
       const targetMed = medicines.find(med => med.id === id);
       if (!targetMed) return;
 
       const actionText = targetMed.isTaken 
         ? `Are you sure you want to mark "${targetMed.name}" as NOT taken?` 
-        : `Are you sure you want to mark "${targetMed.name}" as TAKEN? (20-min Timer will start)`;
+        : `Are you sure you want to mark "${targetMed.name}" as TAKEN? (${savedTimerMins}-min Timer will start)`;
 
       showCustomAlert(actionText, () => {
         medicines = medicines.map(med => {
@@ -589,7 +657,7 @@
             return {
               ...med,
               isTaken: nextStatus,
-              timerEndTimestamp: nextStatus ? Date.now() + TIMER_DURATION_MS : null
+              timerEndTimestamp: nextStatus ? Date.now() + (savedTimerMins * 60 * 1000) : null
             };
           }
           return med;
@@ -598,7 +666,7 @@
       });
     }
 
-    // Reset All Status to Red ×
+    // Reset All Status to Red × from inside Settings Page
     resetStatusBtn.addEventListener('click', () => {
       if (medicines.length === 0) return;
 
@@ -609,6 +677,7 @@
           timerEndTimestamp: null
         }));
         saveAndRender();
+        settingsBackdrop.classList.remove('active'); // Close settings modal after reset
       });
     });
 
@@ -622,7 +691,6 @@
           const remainingMs = med.timerEndTimestamp - now;
           
           if (remainingMs <= 0) {
-            // Timer expired: Keep isTaken = true (Green), clear timerTimestamp
             med.timerEndTimestamp = null;
             needsSave = true;
           } else {
@@ -679,7 +747,7 @@
                 ${med.remark ? `<div class="med-remark">${med.remark}</div>` : ''}
               </div>
             </div>
-            ${showTimer ? `<div id="timer-badge-${med.id}" class="timer-badge">⏱️ 20:00</div>` : ''}
+            ${showTimer ? `<div id="timer-badge-${med.id}" class="timer-badge">⏱️ Calculating...</div>` : ''}
           </div>
 
           <!-- Bottom Professional Action Bar -->
@@ -718,7 +786,6 @@
           self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
           self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));
         `;
-        // Changed to application/javascript for better browser compatibility
         const blob = new Blob([swContent], { type: 'application/javascript' });
         navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
       });
