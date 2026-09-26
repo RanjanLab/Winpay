@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Medicine Tracker PWA</title>
   
-  <!-- Manifest for PWA -->
-  <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Medicine%20Tracker%22,%22short_name%22:%22MedApp%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23f3f4f6%22,%22theme_color%22:%22%232563eb%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563eb'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white'>💊</text></svg>%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg+xml%22}]}"/>
+  <!-- Dynamic Manifest will be injected here -->
+  <link rel="manifest" id="manifest-link">
   <meta name="theme-color" content="#2563eb">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="MedApp">
   
@@ -208,20 +209,6 @@
     .btn-install:hover { background: #1d4ed8; }
     .btn-close-banner { background: transparent; border: none; font-size: 20px; color: #9ca3af; cursor: pointer; padding: 4px; line-height: 1; }
 
-    /* Manual Install Instructions Popup Modal */
-    .guide-popup {
-      background: white;
-      width: 100%;
-      max-width: 380px;
-      border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-      padding: 20px;
-      text-align: left;
-    }
-    .guide-popup h3 { font-size: 17px; color: #1f2937; margin-bottom: 12px; }
-    .guide-popup ol { margin-left: 20px; color: #4b5563; font-size: 14px; line-height: 1.6; }
-    .guide-popup button { width: 100%; background: #2563eb; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: 600; margin-top: 16px; cursor: pointer; }
-
     /* Pop-up Modal Backdrop */
     .backdrop { 
       position: fixed; 
@@ -236,6 +223,20 @@
       transition: opacity 0.2s ease-in-out; 
     }
     .backdrop.active { display: flex; opacity: 1; }
+
+    /* Install Guide Popup Modal */
+    .guide-popup {
+      background: white;
+      width: 100%;
+      max-width: 360px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      padding: 20px;
+      text-align: left;
+    }
+    .guide-popup h3 { font-size: 17px; color: #1f2937; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    .guide-popup ol { margin-left: 18px; color: #4b5563; font-size: 14px; line-height: 1.7; }
+    .guide-popup button { width: 100%; background: #2563eb; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: 600; margin-top: 16px; cursor: pointer; }
     
     /* Center Pop-up Window */
     .popup { 
@@ -306,7 +307,7 @@
   </button>
 
   <!-- Bottom App Install Banner -->
-  <div id="install-banner" class="install-banner">
+  <div id="install-banner" class="install-banner" style="display: none;">
     <div class="install-info">
       <div class="install-icon">💊</div>
       <div class="install-text">
@@ -315,19 +316,19 @@
       </div>
     </div>
     <div class="install-btns">
-      <button id="install-app-btn" class="btn-install">Install</button>
+      <button id="install-app-btn" class="btn-install">Install App</button>
       <button id="close-install-banner" class="btn-close-banner">&times;</button>
     </div>
   </div>
 
-  <!-- Manual Install Guide Modal (Fallback if browser blocks direct prompt) -->
+  <!-- Manual Install Guide Modal -->
   <div id="guide-backdrop" class="backdrop">
     <div class="guide-popup">
-      <h3>Install App Manually</h3>
+      <h3>Install App on Phone</h3>
       <ol>
-        <li>Click browser menu (<strong>⋮</strong> or <strong>Share icon</strong>)</li>
-        <li>Select <strong>"Add to Home Screen"</strong> or <strong>"Install App"</strong></li>
-        <li>Confirm to install.</li>
+        <li>Click browser options (<strong>⋮</strong> menu or <strong>Share icon</strong>).</li>
+        <li>Tap on <strong>"Add to Home Screen"</strong> or <strong>"Install App"</strong>.</li>
+        <li>Confirm to create App icon.</li>
       </ol>
       <button id="close-guide-btn">Got It</button>
     </div>
@@ -376,12 +377,40 @@
   </div>
 
   <script>
+    /* ---------------- Dynamic PWA Manifest Generation ---------------- */
+    // Generates a proper manifest with 192x192 & 512x512 icons (Strictly required for PWA install)
+    const manifestData = {
+      name: "Medicine Tracker",
+      short_name: "MedApp",
+      start_url: window.location.href, // Dynamic URL mapping ensures smooth install
+      display: "standalone",
+      background_color: "#f3f4f6",
+      theme_color: "#2563eb",
+      icons: [
+        {
+          src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563eb'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white'>💊</text></svg>",
+          sizes: "192x192",
+          type: "image/svg+xml",
+          purpose: "any maskable"
+        },
+        {
+          src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563eb'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white'>💊</text></svg>",
+          sizes: "512x512",
+          type: "image/svg+xml",
+          purpose: "any maskable"
+        }
+      ]
+    };
+    const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/manifest+json' });
+    document.getElementById('manifest-link').href = URL.createObjectURL(manifestBlob);
+
+    /* ---------------- App Variables & DOM Elements ---------------- */
     let medicines = JSON.parse(localStorage.getItem('medicines')) || [];
     let pendingAction = null;
     let timerInterval = null;
     let deferredPrompt = null;
 
-    const TIMER_DURATION_MS = 20 * 60 * 1000; // 20 Minutes in Milliseconds
+    const TIMER_DURATION_MS = 20 * 60 * 1000;
 
     const openBtn = document.getElementById('open-btn');
     const closeBtn = document.getElementById('close-btn');
@@ -406,12 +435,11 @@
     const guideBackdrop = document.getElementById('guide-backdrop');
     const closeGuideBtn = document.getElementById('close-guide-btn');
 
-    /* ---------------- PWA Install Auto-Detection ---------------- */
-    function checkAndShowInstallBanner() {
+    /* ---------------- PWA Installation Logic ---------------- */
+    function checkAppInstallation() {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
       const isDismissed = sessionStorage.getItem('installBannerDismissed');
 
-      // Show banner if not installed and not dismissed in current session
       if (!isStandalone && !isDismissed) {
         installBanner.style.display = 'flex';
       } else {
@@ -422,7 +450,7 @@
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      checkAndShowInstallBanner();
+      checkAppInstallation();
     });
 
     installAppBtn.addEventListener('click', async () => {
@@ -434,7 +462,7 @@
         }
         deferredPrompt = null;
       } else {
-        // Fallback: If browser doesn't support automatic prompt, show step-by-step guide
+        // Fallback guide if browser prompt is restricted
         guideBackdrop.classList.add('active');
       }
     });
@@ -584,51 +612,43 @@
       });
     });
 
-    // Check & auto-reset expired timers
-    function checkAndUpdateTimers() {
-      const now = Date.now();
-      let stateChanged = false;
-
-      medicines = medicines.map(med => {
-        if (med.isTaken && med.timerEndTimestamp) {
-          if (now >= med.timerEndTimestamp) {
-            stateChanged = true;
-            return { ...med, isTaken: false, timerEndTimestamp: null };
-          }
-        }
-        return med;
-      });
-
-      if (stateChanged) {
-        saveAndRender();
-      } else {
-        updateTimerDisplays();
-      }
-    }
-
+    // Timer display logic (Keeps GREEN status permanently after timer ends)
     function updateTimerDisplays() {
       const now = Date.now();
+      let needsSave = false;
+
       medicines.forEach(med => {
         if (med.isTaken && med.timerEndTimestamp) {
-          const remainingMs = Math.max(0, med.timerEndTimestamp - now);
-          const totalSeconds = Math.floor(remainingMs / 1000);
-          const mins = Math.floor(totalSeconds / 60);
-          const secs = totalSeconds % 60;
+          const remainingMs = med.timerEndTimestamp - now;
           
-          const formattedMins = String(mins).padStart(2, '0');
-          const formattedSecs = String(secs).padStart(2, '0');
+          if (remainingMs <= 0) {
+            // Timer expired: Keep isTaken = true (Green), clear timerTimestamp
+            med.timerEndTimestamp = null;
+            needsSave = true;
+          } else {
+            const totalSeconds = Math.floor(remainingMs / 1000);
+            const mins = Math.floor(totalSeconds / 60);
+            const secs = totalSeconds % 60;
+            
+            const formattedMins = String(mins).padStart(2, '0');
+            const formattedSecs = String(secs).padStart(2, '0');
 
-          const badgeEl = document.getElementById(`timer-badge-${med.id}`);
-          if (badgeEl) {
-            badgeEl.textContent = `⏱️ ${formattedMins}:${formattedSecs}`;
+            const badgeEl = document.getElementById(`timer-badge-${med.id}`);
+            if (badgeEl) {
+              badgeEl.textContent = `⏱️ ${formattedMins}:${formattedSecs}`;
+            }
           }
         }
       });
+
+      if (needsSave) {
+        saveAndRender();
+      }
     }
 
     function startGlobalTimerLoop() {
       if (!timerInterval) {
-        timerInterval = setInterval(checkAndUpdateTimers, 1000);
+        timerInterval = setInterval(updateTimerDisplays, 1000);
       }
     }
 
@@ -647,6 +667,8 @@
         const card = document.createElement('div');
         card.className = `med-card ${med.isTaken ? 'card-green' : 'card-red'}`;
 
+        const showTimer = med.isTaken && med.timerEndTimestamp && (med.timerEndTimestamp > Date.now());
+
         card.innerHTML = `
           <!-- Card Body -->
           <div class="card-body">
@@ -657,7 +679,7 @@
                 ${med.remark ? `<div class="med-remark">${med.remark}</div>` : ''}
               </div>
             </div>
-            ${med.isTaken ? `<div id="timer-badge-${med.id}" class="timer-badge">⏱️ 20:00</div>` : ''}
+            ${showTimer ? `<div id="timer-badge-${med.id}" class="timer-badge">⏱️ 20:00</div>` : ''}
           </div>
 
           <!-- Bottom Professional Action Bar -->
@@ -686,18 +708,18 @@
       startGlobalTimerLoop();
     }
 
-    // Initialize Check for Install Banner
-    checkAndShowInstallBanner();
+    checkAppInstallation();
 
-    // Register Service Worker
+    // Register Inline Service Worker for PWA Offline Capability
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        const swCode = `
-          self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
+        const swContent = `
+          self.addEventListener('install', e => self.skipWaiting());
           self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
           self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));
         `;
-        const blob = new Blob([swCode], { type: 'application/javascript' });
+        // Changed to application/javascript for better browser compatibility
+        const blob = new Blob([swContent], { type: 'application/javascript' });
         navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
       });
     }
