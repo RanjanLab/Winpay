@@ -402,11 +402,11 @@
   <!-- Custom Alert Pop-up Modal -->
   <div id="alert-backdrop" class="backdrop" style="z-index: 60;">
     <div class="alert-popup">
-      <div class="alert-title">Confirmation</div>
+      <div class="alert-title" id="alert-title-text">Confirmation</div>
       <div id="alert-message" class="alert-message">Are you sure?</div>
       <div class="alert-buttons">
         <button id="alert-cancel-btn" class="alert-btn alert-btn-cancel">Cancel</button>
-        <button id="alert-confirm-btn" class="alert-btn alert-btn-confirm">Confirm</button>
+        <button id="alert-confirm-btn" class="alert-btn alert-btn-confirm">OK</button>
       </div>
     </div>
   </div>
@@ -444,6 +444,54 @@
     let pendingAction = null;
     let timerInterval = null;
     let deferredPrompt = null;
+    let alarmInterval = null;
+
+    // Audio Context for Long Continuous Beep Sound
+    let audioCtx = null;
+
+    function playLongContinuousBeep() {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        osc.type = 'sine'; // Clean long tone
+        osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime); // High pitch C6 tone
+        
+        gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+        
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 1.2); // 1.2 seconds long continuous tone per cycle
+
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function startAlarmSound() {
+      if (alarmInterval) return;
+      playLongContinuousBeep();
+      alarmInterval = setInterval(() => {
+        playLongContinuousBeep();
+      }, 1400); // Repeats the long beep sequence smoothly
+    }
+
+    function stopAlarmSound() {
+      if (alarmInterval) {
+        clearInterval(alarmInterval);
+        alarmInterval = null;
+      }
+    }
 
     const openBtn = document.getElementById('open-btn');
     const closeBtn = document.getElementById('close-btn');
@@ -464,6 +512,7 @@
 
     // Custom Alert Elements
     const alertBackdrop = document.getElementById('alert-backdrop');
+    const alertTitleText = document.getElementById('alert-title-text');
     const alertMessage = document.getElementById('alert-message');
     const alertCancelBtn = document.getElementById('alert-cancel-btn');
     const alertConfirmBtn = document.getElementById('alert-confirm-btn');
@@ -536,7 +585,7 @@
         savedTimerMins = newDuration;
         localStorage.setItem('timerDuration', savedTimerMins);
         settingsBackdrop.classList.remove('active');
-        showCustomAlert(`Timer default duration updated to ${savedTimerMins} minutes.`, null);
+        showCustomAlert('Confirmation', `Timer default duration updated to ${savedTimerMins} minutes.`, null);
       }
     });
 
@@ -580,7 +629,8 @@
           name,
           remark,
           isTaken: false,
-          timerEndTimestamp: null
+          timerEndTimestamp: null,
+          notified: false
         };
         medicines.push(newMed);
       }
@@ -608,13 +658,14 @@
       const targetMed = medicines.find(med => med.id === id);
       if (!targetMed) return;
 
-      showCustomAlert(`Are you sure you want to delete "${targetMed.name}"?`, () => {
+      showCustomAlert('Confirmation', `Are you sure you want to delete "${targetMed.name}"?`, () => {
         medicines = medicines.filter(med => med.id !== id);
         saveAndRender();
       });
     }
 
-    function showCustomAlert(message, onConfirm) {
+    function showCustomAlert(title, message, onConfirm) {
+      alertTitleText.textContent = title;
       alertMessage.textContent = message;
       pendingAction = onConfirm;
       alertBackdrop.classList.add('active');
@@ -629,6 +680,7 @@
     }
 
     function closeCustomAlert() {
+      stopAlarmSound();
       alertBackdrop.classList.remove('active');
       pendingAction = null;
     }
@@ -648,14 +700,15 @@
         ? `Are you sure you want to mark "${targetMed.name}" as NOT taken?` 
         : `Are you sure you want to mark "${targetMed.name}" as TAKEN? (${savedTimerMins}-min Timer will start)`;
 
-      showCustomAlert(actionText, () => {
+      showCustomAlert('Confirmation', actionText, () => {
         medicines = medicines.map(med => {
           if (med.id === id) {
             const nextStatus = !med.isTaken;
             return {
               ...med,
               isTaken: nextStatus,
-              timerEndTimestamp: nextStatus ? Date.now() + (savedTimerMins * 60 * 1000) : null
+              timerEndTimestamp: nextStatus ? Date.now() + (savedTimerMins * 60 * 1000) : null,
+              notified: false
             };
           }
           return med;
@@ -667,11 +720,12 @@
     resetStatusBtn.addEventListener('click', () => {
       if (medicines.length === 0) return;
 
-      showCustomAlert('Are you sure you want to reset all statuses to Red (×)?', () => {
+      showCustomAlert('Confirmation', 'Are you sure you want to reset all statuses to Red (×)?', () => {
         medicines = medicines.map(med => ({
           ...med,
           isTaken: false,
-          timerEndTimestamp: null
+          timerEndTimestamp: null,
+          notified: false
         }));
         saveAndRender();
         settingsBackdrop.classList.remove('active');
@@ -689,6 +743,12 @@
           if (remainingMs <= 0) {
             med.timerEndTimestamp = null;
             needsSave = true;
+
+            if (!med.notified) {
+              med.notified = true;
+              startAlarmSound();
+              showCustomAlert('⏰ Timer Finished!', `Time's up! Please take your medicine: "${med.name}"`, null);
+            }
           } else {
             const totalSeconds = Math.floor(remainingMs / 1000);
             const mins = Math.floor(totalSeconds / 60);
@@ -803,7 +863,6 @@
                     return response;
                   });
                 }).catch(() => {
-                  // Fallback to main page if offline request fails
                   return caches.match('./');
                 });
               })
