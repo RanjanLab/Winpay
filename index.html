@@ -619,7 +619,6 @@
       pendingAction = onConfirm;
       alertBackdrop.classList.add('active');
       
-      // If there's no action passed, just act as a standard info alert (hide cancel button)
       if (!onConfirm) {
         alertCancelBtn.style.display = 'none';
         alertConfirmBtn.textContent = 'OK';
@@ -641,7 +640,6 @@
       closeCustomAlert();
     });
 
-    // Toggle status & start/clear timer dynamically
     function toggleStatus(id) {
       const targetMed = medicines.find(med => med.id === id);
       if (!targetMed) return;
@@ -666,7 +664,6 @@
       });
     }
 
-    // Reset All Status to Red × from inside Settings Page
     resetStatusBtn.addEventListener('click', () => {
       if (medicines.length === 0) return;
 
@@ -677,11 +674,10 @@
           timerEndTimestamp: null
         }));
         saveAndRender();
-        settingsBackdrop.classList.remove('active'); // Close settings modal after reset
+        settingsBackdrop.classList.remove('active');
       });
     });
 
-    // Timer display logic (Keeps GREEN status permanently after timer ends)
     function updateTimerDisplays() {
       const now = Date.now();
       let needsSave = false;
@@ -738,7 +734,6 @@
         const showTimer = med.isTaken && med.timerEndTimestamp && (med.timerEndTimestamp > Date.now());
 
         card.innerHTML = `
-          <!-- Card Body -->
           <div class="card-body">
             <div class="card-info">
               <div class="serial-box">${med.serialNo}</div>
@@ -750,7 +745,6 @@
             ${showTimer ? `<div id="timer-badge-${med.id}" class="timer-badge">⏱️ Calculating...</div>` : ''}
           </div>
 
-          <!-- Bottom Professional Action Bar -->
           <div class="card-actions-bar">
             <div class="action-group">
               <button onclick="editMedicine(${med.id})" class="btn-action-text edit" title="Edit Medicine">
@@ -778,13 +772,43 @@
 
     checkAppInstallation();
 
-    // Register Inline Service Worker for PWA Offline Capability
+    /* ---------------- Robust Offline-First Service Worker ---------------- */
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         const swContent = `
-          self.addEventListener('install', e => self.skipWaiting());
-          self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
-          self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));
+          const CACHE_NAME = 'med-tracker-cache-v1';
+          self.addEventListener('install', e => {
+            self.skipWaiting();
+          });
+          self.addEventListener('activate', e => {
+            e.waitUntil(
+              caches.keys().then(keys => {
+                return Promise.all(
+                  keys.map(key => {
+                    if (key !== CACHE_NAME) return caches.delete(key);
+                  })
+                );
+              }).then(() => self.clients.claim())
+            );
+          });
+          self.addEventListener('fetch', e => {
+            e.respondWith(
+              caches.match(e.request).then(cachedResponse => {
+                if (cachedResponse) {
+                  return cachedResponse;
+                }
+                return fetch(e.request).then(response => {
+                  return caches.open(CACHE_NAME).then(cache => {
+                    cache.put(e.request, response.clone());
+                    return response;
+                  });
+                }).catch(() => {
+                  // Fallback to main page if offline request fails
+                  return caches.match('./');
+                });
+              })
+            );
+          });
         `;
         const blob = new Blob([swContent], { type: 'application/javascript' });
         navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
