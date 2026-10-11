@@ -461,8 +461,8 @@
         const osc = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
         
-        osc.type = 'sine'; // Clean long tone
-        osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime); // High pitch C6 tone
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime); // C6 tone
         
         gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
@@ -471,8 +471,7 @@
         gainNode.connect(audioCtx.destination);
         
         osc.start();
-        osc.stop(audioCtx.currentTime + 1.2); // 1.2 seconds long continuous tone per cycle
-
+        osc.stop(audioCtx.currentTime + 1.2);
       } catch (e) {
         console.error(e);
       }
@@ -483,7 +482,7 @@
       playLongContinuousBeep();
       alarmInterval = setInterval(() => {
         playLongContinuousBeep();
-      }, 1400); // Repeats the long beep sequence smoothly
+      }, 1400);
     }
 
     function stopAlarmSound() {
@@ -523,6 +522,55 @@
     const closeInstallBanner = document.getElementById('close-install-banner');
     const guideBackdrop = document.getElementById('guide-backdrop');
     const closeGuideBtn = document.getElementById('close-guide-btn');
+
+    /* ---------------- Morning & Evening Reminder System ---------------- */
+    function checkMorningEveningReminders() {
+      if (!('Notification' in window)) return;
+
+      const now = new Date();
+      const currentHour = now.getHours();
+      const todayDateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+
+      const lastMorningNotified = localStorage.getItem('lastMorningNotified');
+      const lastEveningNotified = localStorage.getItem('lastEveningNotified');
+
+      // Morning Window (6:00 AM to 11:59 AM)
+      if (currentHour >= 6 && currentHour < 12) {
+        if (lastMorningNotified !== todayDateStr) {
+          // Trigger morning notification reminder
+          if (Notification.permission === 'granted') {
+            new Notification('☀️ Subah ka Medicine Reminder', {
+              body: 'Kripya apna morning medicine check karein aur time par lein.',
+              icon: 'https://cdn-icons-png.flaticon.com/512/822/822143.png'
+            });
+          }
+          localStorage.setItem('lastMorningNotified', todayDateStr);
+        }
+      }
+
+      // Evening Window (5:00 PM to 11:59 PM)
+      if (currentHour >= 17 && currentHour < 24) {
+        if (lastEveningNotified !== todayDateStr) {
+          // Trigger evening notification reminder
+          if (Notification.permission === 'granted') {
+            new Notification('🌙 Shaam ka Medicine Reminder', {
+              body: 'Kripya apna evening medicine check karein aur time par lein.',
+              icon: 'https://cdn-icons-png.flaticon.com/512/822/822143.png'
+            });
+          }
+          localStorage.setItem('lastEveningNotified', todayDateStr);
+        }
+      }
+    }
+
+    // Request Notification Permission on load
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
+
+    // Check reminders every minute
+    setInterval(checkMorningEveningReminders, 60000);
+    checkMorningEveningReminders();
 
     /* ---------------- PWA Installation Logic ---------------- */
     function checkAppInstallation() {
