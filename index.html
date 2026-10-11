@@ -523,46 +523,60 @@
     const guideBackdrop = document.getElementById('guide-backdrop');
     const closeGuideBtn = document.getElementById('close-guide-btn');
 
-    /* ---------------- Morning & Evening Reminder System ---------------- */
+    /* ---------------- Smart Permission & Reminder Middleware ---------------- */
+    function verifyNotificationPermission(callback) {
+      if (!('Notification' in window)) {
+        if (callback) callback();
+        return;
+      }
+
+      if (Notification.permission === 'granted') {
+        if (callback) callback();
+      } else {
+        // Show permission request popup prompt
+        showCustomAlert(
+          '🔔 Permission Required',
+          'Kripya app ko smooth chalane aur reminders ke liye Notification Permission Allow karein.',
+          () => {
+            Notification.requestPermission().then(permission => {
+              if (permission === 'granted') {
+                if (callback) callback();
+              }
+            });
+          }
+        );
+      }
+    }
+
     function checkMorningEveningReminders() {
-      if (!('Notification' in window)) return;
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
       const now = new Date();
       const currentHour = now.getHours();
-      const todayDateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      const todayDateStr = now.toISOString().split('T')[0];
 
       const lastMorningNotified = localStorage.getItem('lastMorningNotified');
       const lastEveningNotified = localStorage.getItem('lastEveningNotified');
 
-      // Morning Window (6:00 AM to 11:59 AM)
       if (currentHour >= 6 && currentHour < 12) {
         if (lastMorningNotified !== todayDateStr) {
-          if (Notification.permission === 'granted') {
-            new Notification('☀️ Subah ka Medicine Reminder', {
-              body: 'Kripya apna morning medicine check karein aur time par lein.',
-              icon: 'https://cdn-icons-png.flaticon.com/512/822/822143.png'
-            });
-          }
+          new Notification('☀️ Subah ka Medicine Reminder', {
+            body: 'Kripya apna morning medicine check karein aur time par lein.',
+            icon: 'https://cdn-icons-png.flaticon.com/512/822/822143.png'
+          });
           localStorage.setItem('lastMorningNotified', todayDateStr);
         }
       }
 
-      // Evening Window (5:00 PM to 11:59 PM)
       if (currentHour >= 17 && currentHour < 24) {
         if (lastEveningNotified !== todayDateStr) {
-          if (Notification.permission === 'granted') {
-            new Notification('🌙 Shaam ka Medicine Reminder', {
-              body: 'Kripya apna evening medicine check karein aur time par lein.',
-              icon: 'https://cdn-icons-png.flaticon.com/512/822/822143.png'
-            });
-          }
+          new Notification('🌙 Shaam ka Medicine Reminder', {
+            body: 'Kripya apna evening medicine check karein aur time par lein.',
+            icon: 'https://cdn-icons-png.flaticon.com/512/822/822143.png'
+          });
           localStorage.setItem('lastEveningNotified', todayDateStr);
         }
       }
-    }
-
-    if ('Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission();
     }
 
     setInterval(checkMorningEveningReminders, 60000);
@@ -615,8 +629,10 @@
 
     /* ---------------- Settings & Timer Logic ---------------- */
     settingsBtn.addEventListener('click', () => {
-      timerDurationInput.value = savedTimerMins;
-      settingsBackdrop.classList.add('active');
+      verifyNotificationPermission(() => {
+        timerDurationInput.value = savedTimerMins;
+        settingsBackdrop.classList.add('active');
+      });
     });
 
     closeSettingsBtn.addEventListener('click', () => {
@@ -648,7 +664,12 @@
       }
     }
 
-    openBtn.addEventListener('click', () => togglePopup(true));
+    openBtn.addEventListener('click', () => {
+      verifyNotificationPermission(() => {
+        togglePopup(true);
+      });
+    });
+
     closeBtn.addEventListener('click', () => togglePopup(false));
 
     form.addEventListener('submit', (e) => {
@@ -685,26 +706,30 @@
     });
 
     window.editMedicine = function(id) {
-      const targetMed = medicines.find(med => med.id === id);
-      if (!targetMed) return;
+      verifyNotificationPermission(() => {
+        const targetMed = medicines.find(med => med.id === id);
+        if (!targetMed) return;
 
-      editIdInput.value = targetMed.id;
-      document.getElementById('serial-no').value = targetMed.serialNo;
-      document.getElementById('med-name').value = targetMed.name;
-      document.getElementById('med-remark').value = targetMed.remark;
+        editIdInput.value = targetMed.id;
+        document.getElementById('serial-no').value = targetMed.serialNo;
+        document.getElementById('med-name').value = targetMed.name;
+        document.getElementById('med-remark').value = targetMed.remark;
 
-      popupTitle.textContent = 'Edit Medicine';
-      submitBtn.textContent = 'Update Medicine';
-      togglePopup(true, true);
+        popupTitle.textContent = 'Edit Medicine';
+        submitBtn.textContent = 'Update Medicine';
+        togglePopup(true, true);
+      });
     }
 
     window.deleteMedicine = function(id) {
-      const targetMed = medicines.find(med => med.id === id);
-      if (!targetMed) return;
+      verifyNotificationPermission(() => {
+        const targetMed = medicines.find(med => med.id === id);
+        if (!targetMed) return;
 
-      showCustomAlert('Confirmation', `Are you sure you want to delete "${targetMed.name}"?`, () => {
-        medicines = medicines.filter(med => med.id !== id);
-        saveAndRender();
+        showCustomAlert('Confirmation', `Are you sure you want to delete "${targetMed.name}"?`, () => {
+          medicines = medicines.filter(med => med.id !== id);
+          saveAndRender();
+        });
       });
     }
 
@@ -737,27 +762,29 @@
     });
 
     window.toggleStatus = function(id) {
-      const targetMed = medicines.find(med => med.id === id);
-      if (!targetMed) return;
+      verifyNotificationPermission(() => {
+        const targetMed = medicines.find(med => med.id === id);
+        if (!targetMed) return;
 
-      const actionText = targetMed.isTaken 
-        ? `Are you sure you want to mark "${targetMed.name}" as NOT taken?` 
-        : `Are you sure you want to mark "${targetMed.name}" as TAKEN? (${savedTimerMins}-min Timer will start)`;
+        const actionText = targetMed.isTaken 
+          ? `Are you sure you want to mark "${targetMed.name}" as NOT taken?` 
+          : `Are you sure you want to mark "${targetMed.name}" as TAKEN? (${savedTimerMins}-min Timer will start)`;
 
-      showCustomAlert('Confirmation', actionText, () => {
-        medicines = medicines.map(med => {
-          if (med.id === id) {
-            const nextStatus = !med.isTaken;
-            return {
-              ...med,
-              isTaken: nextStatus,
-              timerEndTimestamp: nextStatus ? Date.now() + (savedTimerMins * 60 * 1000) : null,
-              notified: false
-            };
-          }
-          return med;
+        showCustomAlert('Confirmation', actionText, () => {
+          medicines = medicines.map(med => {
+            if (med.id === id) {
+              const nextStatus = !med.isTaken;
+              return {
+                ...med,
+                isTaken: nextStatus,
+                timerEndTimestamp: nextStatus ? Date.now() + (savedTimerMins * 60 * 1000) : null,
+                notified: false
+              };
+            }
+            return med;
+          });
+          saveAndRender();
         });
-        saveAndRender();
       });
     }
 
