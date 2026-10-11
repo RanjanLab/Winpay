@@ -462,7 +462,7 @@
         const gainNode = audioCtx.createGain();
         
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime); // C6 tone
+        osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime);
         
         gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
@@ -523,33 +523,9 @@
     const guideBackdrop = document.getElementById('guide-backdrop');
     const closeGuideBtn = document.getElementById('close-guide-btn');
 
-    /* ---------------- Smart Permission & Reminder Middleware ---------------- */
-    function verifyNotificationPermission(callback) {
-      if (!('Notification' in window)) {
-        if (callback) callback();
-        return;
-      }
-
-      if (Notification.permission === 'granted') {
-        if (callback) callback();
-      } else {
-        // Show permission request popup prompt
-        showCustomAlert(
-          '🔔 Permission Required',
-          'Kripya app ko smooth chalane aur reminders ke liye Notification Permission Allow karein.',
-          () => {
-            Notification.requestPermission().then(permission => {
-              if (permission === 'granted') {
-                if (callback) callback();
-              }
-            });
-          }
-        );
-      }
-    }
-
+    /* ---------------- Morning & Evening Reminder System ---------------- */
     function checkMorningEveningReminders() {
-      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      if (!('Notification' in window)) return;
 
       const now = new Date();
       const currentHour = now.getHours();
@@ -560,20 +536,22 @@
 
       if (currentHour >= 6 && currentHour < 12) {
         if (lastMorningNotified !== todayDateStr) {
-          new Notification('☀️ Subah ka Medicine Reminder', {
-            body: 'Kripya apna morning medicine check karein aur time par lein.',
-            icon: 'https://cdn-icons-png.flaticon.com/512/822/822143.png'
-          });
+          if (Notification.permission === 'granted') {
+            new Notification('☀️ Subah ka Medicine Reminder', {
+              body: 'Kripya apna morning medicine check karein aur time par lein.'
+            });
+          }
           localStorage.setItem('lastMorningNotified', todayDateStr);
         }
       }
 
       if (currentHour >= 17 && currentHour < 24) {
         if (lastEveningNotified !== todayDateStr) {
-          new Notification('🌙 Shaam ka Medicine Reminder', {
-            body: 'Kripya apna evening medicine check karein aur time par lein.',
-            icon: 'https://cdn-icons-png.flaticon.com/512/822/822143.png'
-          });
+          if (Notification.permission === 'granted') {
+            new Notification('🌙 Shaam ka Medicine Reminder', {
+              body: 'Kripya apna evening medicine check karein aur time par lein.'
+            });
+          }
           localStorage.setItem('lastEveningNotified', todayDateStr);
         }
       }
@@ -581,6 +559,28 @@
 
     setInterval(checkMorningEveningReminders, 60000);
     checkMorningEveningReminders();
+
+    /* ---------------- Smart Permission Check ---------------- */
+    function verifyPermissionAndProceed(actionCallback) {
+      if (!('Notification' in window)) {
+        actionCallback();
+        return;
+      }
+
+      if (Notification.permission === 'granted') {
+        actionCallback();
+      } else {
+        showCustomAlert(
+          '🔔 Permission Required',
+          'Kripya reminders aur notifications ke liye Permission Allow karein.',
+          () => {
+            Notification.requestPermission().then(() => {
+              actionCallback();
+            });
+          }
+        );
+      }
+    }
 
     /* ---------------- PWA Installation Logic ---------------- */
     function checkAppInstallation() {
@@ -629,7 +629,7 @@
 
     /* ---------------- Settings & Timer Logic ---------------- */
     settingsBtn.addEventListener('click', () => {
-      verifyNotificationPermission(() => {
+      verifyPermissionAndProceed(() => {
         timerDurationInput.value = savedTimerMins;
         settingsBackdrop.classList.add('active');
       });
@@ -665,7 +665,7 @@
     }
 
     openBtn.addEventListener('click', () => {
-      verifyNotificationPermission(() => {
+      verifyPermissionAndProceed(() => {
         togglePopup(true);
       });
     });
@@ -706,7 +706,7 @@
     });
 
     window.editMedicine = function(id) {
-      verifyNotificationPermission(() => {
+      verifyPermissionAndProceed(() => {
         const targetMed = medicines.find(med => med.id === id);
         if (!targetMed) return;
 
@@ -722,7 +722,7 @@
     }
 
     window.deleteMedicine = function(id) {
-      verifyNotificationPermission(() => {
+      verifyPermissionAndProceed(() => {
         const targetMed = medicines.find(med => med.id === id);
         if (!targetMed) return;
 
@@ -762,7 +762,7 @@
     });
 
     window.toggleStatus = function(id) {
-      verifyNotificationPermission(() => {
+      verifyPermissionAndProceed(() => {
         const targetMed = medicines.find(med => med.id === id);
         if (!targetMed) return;
 
@@ -774,6 +774,14 @@
           medicines = medicines.map(med => {
             if (med.id === id) {
               const nextStatus = !med.isTaken;
+              // App open hote hi ya status toggle hone par morning/evening notification state reset check
+              const todayDateStr = new Date().toISOString().split('T')[0];
+              if (new Date().getHours() < 12) {
+                localStorage.setItem('lastMorningNotified', todayDateStr);
+              } else {
+                localStorage.setItem('lastEveningNotified', todayDateStr);
+              }
+
               return {
                 ...med,
                 isTaken: nextStatus,
