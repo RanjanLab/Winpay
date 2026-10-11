@@ -301,7 +301,7 @@
   <header>
     <h2>Medicine Dashboard</h2>
     <div class="header-actions">
-      <!-- Settings Button -->
+      <!-- Settings Button replacing Reset button -->
       <button id="settings-btn" class="header-btn">
         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
         Settings
@@ -461,8 +461,8 @@
         const osc = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
         
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime);
+        osc.type = 'sine'; // Clean long tone
+        osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime); // High pitch C6 tone
         
         gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
@@ -471,7 +471,8 @@
         gainNode.connect(audioCtx.destination);
         
         osc.start();
-        osc.stop(audioCtx.currentTime + 1.2);
+        osc.stop(audioCtx.currentTime + 1.2); // 1.2 seconds long continuous tone per cycle
+
       } catch (e) {
         console.error(e);
       }
@@ -482,7 +483,7 @@
       playLongContinuousBeep();
       alarmInterval = setInterval(() => {
         playLongContinuousBeep();
-      }, 1400);
+      }, 1400); // Repeats the long beep sequence smoothly
     }
 
     function stopAlarmSound() {
@@ -522,65 +523,6 @@
     const closeInstallBanner = document.getElementById('close-install-banner');
     const guideBackdrop = document.getElementById('guide-backdrop');
     const closeGuideBtn = document.getElementById('close-guide-btn');
-
-    /* ---------------- Morning & Evening Reminder System ---------------- */
-    function checkMorningEveningReminders() {
-      if (!('Notification' in window)) return;
-
-      const now = new Date();
-      const currentHour = now.getHours();
-      const todayDateStr = now.toISOString().split('T')[0];
-
-      const lastMorningNotified = localStorage.getItem('lastMorningNotified');
-      const lastEveningNotified = localStorage.getItem('lastEveningNotified');
-
-      if (currentHour >= 6 && currentHour < 12) {
-        if (lastMorningNotified !== todayDateStr) {
-          if (Notification.permission === 'granted') {
-            new Notification('☀️ Subah ka Medicine Reminder', {
-              body: 'Kripya apna morning medicine check karein aur time par lein.'
-            });
-          }
-          localStorage.setItem('lastMorningNotified', todayDateStr);
-        }
-      }
-
-      if (currentHour >= 17 && currentHour < 24) {
-        if (lastEveningNotified !== todayDateStr) {
-          if (Notification.permission === 'granted') {
-            new Notification('🌙 Shaam ka Medicine Reminder', {
-              body: 'Kripya apna evening medicine check karein aur time par lein.'
-            });
-          }
-          localStorage.setItem('lastEveningNotified', todayDateStr);
-        }
-      }
-    }
-
-    setInterval(checkMorningEveningReminders, 60000);
-    checkMorningEveningReminders();
-
-    /* ---------------- Smart Permission Check ---------------- */
-    function verifyPermissionAndProceed(actionCallback) {
-      if (!('Notification' in window)) {
-        actionCallback();
-        return;
-      }
-
-      if (Notification.permission === 'granted') {
-        actionCallback();
-      } else {
-        showCustomAlert(
-          '🔔 Permission Required',
-          'Kripya reminders aur notifications ke liye Permission Allow karein.',
-          () => {
-            Notification.requestPermission().then(() => {
-              actionCallback();
-            });
-          }
-        );
-      }
-    }
 
     /* ---------------- PWA Installation Logic ---------------- */
     function checkAppInstallation() {
@@ -629,10 +571,8 @@
 
     /* ---------------- Settings & Timer Logic ---------------- */
     settingsBtn.addEventListener('click', () => {
-      verifyPermissionAndProceed(() => {
-        timerDurationInput.value = savedTimerMins;
-        settingsBackdrop.classList.add('active');
-      });
+      timerDurationInput.value = savedTimerMins;
+      settingsBackdrop.classList.add('active');
     });
 
     closeSettingsBtn.addEventListener('click', () => {
@@ -664,12 +604,7 @@
       }
     }
 
-    openBtn.addEventListener('click', () => {
-      verifyPermissionAndProceed(() => {
-        togglePopup(true);
-      });
-    });
-
+    openBtn.addEventListener('click', () => togglePopup(true));
     closeBtn.addEventListener('click', () => togglePopup(false));
 
     form.addEventListener('submit', (e) => {
@@ -705,31 +640,27 @@
       togglePopup(false);
     });
 
-    window.editMedicine = function(id) {
-      verifyPermissionAndProceed(() => {
-        const targetMed = medicines.find(med => med.id === id);
-        if (!targetMed) return;
+    function editMedicine(id) {
+      const targetMed = medicines.find(med => med.id === id);
+      if (!targetMed) return;
 
-        editIdInput.value = targetMed.id;
-        document.getElementById('serial-no').value = targetMed.serialNo;
-        document.getElementById('med-name').value = targetMed.name;
-        document.getElementById('med-remark').value = targetMed.remark;
+      editIdInput.value = targetMed.id;
+      document.getElementById('serial-no').value = targetMed.serialNo;
+      document.getElementById('med-name').value = targetMed.name;
+      document.getElementById('med-remark').value = targetMed.remark;
 
-        popupTitle.textContent = 'Edit Medicine';
-        submitBtn.textContent = 'Update Medicine';
-        togglePopup(true, true);
-      });
+      popupTitle.textContent = 'Edit Medicine';
+      submitBtn.textContent = 'Update Medicine';
+      togglePopup(true, true);
     }
 
-    window.deleteMedicine = function(id) {
-      verifyPermissionAndProceed(() => {
-        const targetMed = medicines.find(med => med.id === id);
-        if (!targetMed) return;
+    function deleteMedicine(id) {
+      const targetMed = medicines.find(med => med.id === id);
+      if (!targetMed) return;
 
-        showCustomAlert('Confirmation', `Are you sure you want to delete "${targetMed.name}"?`, () => {
-          medicines = medicines.filter(med => med.id !== id);
-          saveAndRender();
-        });
+      showCustomAlert('Confirmation', `Are you sure you want to delete "${targetMed.name}"?`, () => {
+        medicines = medicines.filter(med => med.id !== id);
+        saveAndRender();
       });
     }
 
@@ -761,38 +692,28 @@
       closeCustomAlert();
     });
 
-    window.toggleStatus = function(id) {
-      verifyPermissionAndProceed(() => {
-        const targetMed = medicines.find(med => med.id === id);
-        if (!targetMed) return;
+    function toggleStatus(id) {
+      const targetMed = medicines.find(med => med.id === id);
+      if (!targetMed) return;
 
-        const actionText = targetMed.isTaken 
-          ? `Are you sure you want to mark "${targetMed.name}" as NOT taken?` 
-          : `Are you sure you want to mark "${targetMed.name}" as TAKEN? (${savedTimerMins}-min Timer will start)`;
+      const actionText = targetMed.isTaken 
+        ? `Are you sure you want to mark "${targetMed.name}" as NOT taken?` 
+        : `Are you sure you want to mark "${targetMed.name}" as TAKEN? (${savedTimerMins}-min Timer will start)`;
 
-        showCustomAlert('Confirmation', actionText, () => {
-          medicines = medicines.map(med => {
-            if (med.id === id) {
-              const nextStatus = !med.isTaken;
-              // App open hote hi ya status toggle hone par morning/evening notification state reset check
-              const todayDateStr = new Date().toISOString().split('T')[0];
-              if (new Date().getHours() < 12) {
-                localStorage.setItem('lastMorningNotified', todayDateStr);
-              } else {
-                localStorage.setItem('lastEveningNotified', todayDateStr);
-              }
-
-              return {
-                ...med,
-                isTaken: nextStatus,
-                timerEndTimestamp: nextStatus ? Date.now() + (savedTimerMins * 60 * 1000) : null,
-                notified: false
-              };
-            }
-            return med;
-          });
-          saveAndRender();
+      showCustomAlert('Confirmation', actionText, () => {
+        medicines = medicines.map(med => {
+          if (med.id === id) {
+            const nextStatus = !med.isTaken;
+            return {
+              ...med,
+              isTaken: nextStatus,
+              timerEndTimestamp: nextStatus ? Date.now() + (savedTimerMins * 60 * 1000) : null,
+              notified: false
+            };
+          }
+          return med;
         });
+        saveAndRender();
       });
     }
 
