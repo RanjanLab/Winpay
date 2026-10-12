@@ -836,7 +836,7 @@
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         const swContent = `
-          const CACHE_NAME = 'med-tracker-cache-v1';
+          const CACHE_NAME = 'med-tracker-cache-v2';
           self.addEventListener('install', e => {
             self.skipWaiting();
           });
@@ -855,6 +855,12 @@
             e.respondWith(
               caches.match(e.request).then(cachedResponse => {
                 if (cachedResponse) {
+                  // Return cached response immediately, and update cache in background
+                  fetch(e.request).then(networkResponse => {
+                    if (networkResponse && networkResponse.status === 200) {
+                      caches.open(CACHE_NAME).then(cache => cache.put(e.request, networkResponse));
+                    }
+                  }).catch(() => {});
                   return cachedResponse;
                 }
                 return fetch(e.request).then(response => {
